@@ -1,7 +1,7 @@
 # 🏎️ F1 Dashboard
 
 > **Dashboard Interativo de Fórmula 1** desenvolvido com Streamlit, projetado para análise em tempo real das **5 voltas mais rápidas por circuito** consumindo dados da API OpenF1.
-> Aplicação desenvolvida sob arquitetura em camadas, validação de dados rigorosa com Pydantic v2, suíte de testes unitários automatizados, linting estrito e documentação viva.
+> Aplicação desenvolvida sob arquitetura em camadas, validação de dados rigorosa com Pydantic v2, suíte de testes unitários automatizados, linting estrito e governança completa de engenharia de software.
 
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
@@ -17,7 +17,7 @@
 
 A análise de telemetria e tempos de volta na Fórmula 1 frequentemente exige a manipulação de dados de alta frequência expostos por APIs públicas. O objetivo deste projeto é fornecer um **dashboard operacional ágil e confiável** para visualização do desempenho em pista, enquanto demonstra padrões de engenharia de software de nível corporativo.
 
-Este projeto foi concebido como um laboratório prático de Python com foco em **qualidade de código em produção**, evoluindo de um script de análise isolado para um produto estruturado com governança de dados e arquitetura resiliente.
+Este projeto foi concebido como um laboratório prático com foco em **qualidade de código em produção**, evoluindo de um script de análise isolado para um produto estruturado com governança de dados, tipagem estática e arquitetura resiliente.
 
 **Perguntas que a aplicação responde:**
 - Quais são as 5 voltas mais rápidas registradas em determinado circuito durante a sessão?
@@ -26,7 +26,9 @@ Este projeto foi concebido como um laboratório prático de Python com foco em *
 
 ---
 
-## 🏗️ Arquitetura da Aplicação
+## 🏗️ Arquitetura & Modularização
+
+O projeto adota **separação por camadas** com responsabilidades bem definidas. Cada camada é coesa e possui acoplamento mínimo com as demais.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -39,54 +41,96 @@ Este projeto foi concebido como um laboratório prático de Python com foco em *
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Padrões Arquiteturais Aplicados:**
-- **Separation of Concerns (SoC):** Camada de apresentação totalmente isolada da ingestão e regras de negócio.
-- **Data Validation Layer:** Modelagem estrita via Pydantic v2 para assegurar que contratos da API OpenF1 sejam respeitados.
-- **Fail-Fast & Logging:** Sistema de logs centralizado para rápida rastreabilidade e depuração de requisições HTTP.
+### Regras da Arquitetura
+- **`ingestion/`**: Conexão HTTP resiliente com a API OpenF1 e parse bruto. Não contém regras de negócio.
+- **`domain/`**: Schemas Pydantic v2, entidades e validações. Não possui dependências de infraestrutura.
+- **`processing/`**: Regras de transformação, ordenação e cálculo das top voltas.
+- **`utils/`**: Utilitários transversais (logging estruturado, configurações via `.env`).
+- **`dashboard.py`**: Entrypoint da interface gráfica em Streamlit.
 
 ---
 
 ## 📦 Módulos de Produção
 
-### Camada de Software
-
-| Módulo | Arquivo | Responsabilidade |
+| Camada | Arquivo / Diretório | Responsabilidade |
 |---|---|---|
-| **Entrypoint** | `src/f1/dashboard.py` | Interface gráfica em Streamlit, renderização de tabelas e filtros interativos |
-| **Domínio** | `src/f1/domain/` | Modelos de dados Pydantic v2, schemas de validação e repositórios |
+| **Entrypoint** | `src/f1/dashboard.py` | Interface gráfica em Streamlit, renderização de tabelas e filtros |
+| **Domínio** | `src/f1/domain/` | Modelos Pydantic v2, schemas de validação e regras de negócio |
 | **Ingestão** | `src/f1/ingestion/` | Cliente HTTP resiliente para consumo de endpoints em tempo real da OpenF1 API |
 | **Processamento** | `src/f1/processing/` | Algoritmos de ordenação, filtragem e cálculo das 5 voltas mais rápidas por pista |
-| **Utilitários** | `src/f1/utils/` | Sistema de logging estruturado e leitura centralizada de configurações |
+| **Utilitários** | `src/f1/utils/` | Sistema de logging estruturado e leitura de configurações de ambiente |
 
 ---
 
-## 🧪 Testes Automatizados & Qualidade
+## 🛠️ Padrões de Engenharia & Qualidade
 
-Suíte rigorosa de testes unitários desenvolvida com `pytest`, cobrindo validação de schemas, ingestão HTTP e lógica de processamento de voltas:
-
-| Suíte de Testes | Cobertura Mínima | Objetivo |
-|---|---|---|
-| `tests/unit/` | $\ge$ 50% (37 testes) | Garantir estabilidade da camada de domínio, manipulação de voltas e mocks de API |
+### 1. Gerenciamento de Ambiente com Poetry
+O uso do **Poetry** é obrigatório para gerenciamento de dependências e ambientes reproduzíveis (`poetry.lock`). O uso de `pip install` direto é proibido.
 
 ```bash
-# Executar a suíte de testes unitários
-poetry run pytest tests/unit/
+# Instalar dependências completas (com grupos de dev e docs)
+poetry install --with dev,docs
 
-# Verificar regras de linting e formatação de código
-poetry run ruff check .
+# Adicionar nova dependência
+poetry add pydantic
+poetry add --group dev pytest ruff
 ```
 
----
+### 2. Qualidade de Código & Linting (Ruff)
+Seguimos o padrão **PEP 8** com validação automatizada via **Ruff**. O código deve passar 100% no lint antes de submissões.
 
-## 📚 Documentação Técnica
+```toml
+# pyproject.toml
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+src = ["src", "tests"]
 
-A documentação completa do projeto é mantida através do **MkDocs Material**, permitindo navegação estruturada pelas classes, módulos e arquitetura da aplicação.
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "N"]
+ignore = ["E501"]
+```
 
 ```bash
-# Servir a documentação localmente (http://127.0.0.1:8000)
+# Verificar linting e formatação
+poetry run ruff check .
+poetry run ruff format . --check
+```
+
+### 3. Testes Automatizados & Cobertura (Pytest)
+Cobertura mínima obrigatória de **50%** em testes unitários isolados (`tests/unit/`).
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src/f1 --cov-report=term-missing --cov-fail-under=50"
+```
+
+```bash
+# Executar suíte de testes
+poetry run pytest
+
+# Executar com relatório HTML de cobertura
+poetry run pytest --cov=src/f1 --cov-report=html
+```
+
+### 4. Logging Estruturado & Variáveis de Ambiente
+- **Sem `print()`:** Uso do módulo `logging` estruturado centralizado em `src/f1/utils/logger.py`.
+- **Zero Secrets:** Credenciais e URLs via `.env` (nunca commitados; exemplo disponível em `.env.example`).
+- **Imports Absolutos:** Proibido uso de imports relativos (`from f1.domain import ...`).
+- **Type Hints:** Obrigatório o uso de tipagem em todas as assinaturas de funções e métodos.
+
+---
+
+## 📚 Documentação Técnica (MkDocs Material)
+
+A documentação do projeto é versionada no próprio repositório utilizando **MkDocs Material**.
+
+```bash
+# Servir a documentação localmente em http://127.0.0.1:8000
 poetry run task docs
 
-# Compilar o build estático da documentação
+# Gerar build estático da documentação
 poetry run task docs-build
 ```
 
@@ -99,12 +143,28 @@ poetry run task docs-build
 git clone https://github.com/alesina78/f1-dashboard.git
 cd f1-dashboard
 
-# 2. Instalar dependências de ambiente e desenvolvimento
+# 2. Configurar o ambiente com Poetry
 poetry install --with dev
 
-# 3. Iniciar a aplicação Streamlit
+# 3. Copiar variáveis de ambiente de exemplo
+cp .env.example .env
+
+# 4. Executar o Dashboard Streamlit
 poetry run streamlit run src/f1/dashboard.py
 ```
+
+---
+
+## 🤝 Padrões de Contribuição & PRs
+
+Antes de abrir um Pull Request, certifique-se de que a sua contribuição cumpre o checklist:
+
+- [ ] Código passa 100% no lint: `poetry run ruff check .`
+- [ ] Todos os testes unitários passaram: `poetry run pytest`
+- [ ] Cobertura de testes mantida acima do limite ($\ge 50\%$)
+- [ ] Type hints inclusos em novas funções
+- [ ] Nenhuma credencial ou secret incluída
+- [ ] Documentação atualizada (se alterou regras de negócio ou contratos)
 
 ---
 
@@ -112,20 +172,20 @@ poetry run streamlit run src/f1/dashboard.py
 
 ```
 f1-dashboard/
-│
-├── src/f1/                     # Módulos de produção
-│   ├── domain/                 # Schemas e validação (Pydantic v2)
-│   ├── ingestion/              # Clientes de API (OpenF1)
-│   ├── processing/             # Logica de filtro e top voltas
-│   ├── utils/                  # Logger e configs
-│   └── dashboard.py            # Entrypoint do Streamlit
-│
+├── .env.example                # Exemplo de variáveis de ambiente
+├── pyproject.toml              # Configuração do Poetry, Ruff e Pytest
+├── poetry.lock                 # Lockfile de dependências
+├── src/
+│   └── f1/                     # Módulos da aplicação
+│       ├── domain/             # Schemas Pydantic v2 e validações
+│       ├── ingestion/          # Cliente HTTP para API OpenF1
+│       ├── processing/         # Lógica de cálculo e filtragem das voltas
+│       ├── utils/              # Logger estruturado e configs
+│       └── dashboard.py        # Entrypoint da interface Streamlit
 ├── tests/
-│   └── unit/                   # 37 testes unitários (pytest)
-│
-├── docs/                       # Arquivos-fonte do MkDocs Material
-│
-├── pyproject.toml              # Dependências Poetry e configs do Ruff
+│   ├── unit/                   # Testes unitários com Pytest (37 testes)
+│   └── integration/            # Testes de integração HTTP
+├── docs/                       # Fonte da documentação MkDocs Material
 └── README.md
 ```
 
@@ -133,7 +193,7 @@ f1-dashboard/
 
 ## 👤 Autor
 
-**Alessandro Lesina Giordano**  
+**Alessandro Lesina Giordano**
 Senior Data Engineer & Analytics Specialist | 25+ anos em TI Corporativa
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-alessandrolesina-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/alessandrolesina/)
